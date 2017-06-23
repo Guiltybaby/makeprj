@@ -1,0 +1,193 @@
+
+LOCAL_MODULE:=$(LOCAL_MODULE)
+
+INTERMEDIATES:=_intermediates
+LOCAL_INTERMEDIATES:=$(LOCAL_MODULE)$(INTERMEDIATES)
+ifeq ($(LOCAL_TARGET_SUFFIX),.a)
+MODULE_OUTPUT_DIR:=$(OUT_STATIC_LIB_DIR)$(addprefix lib,$(LOCAL_INTERMEDIATES))
+else 
+ifeq ($(LOCAL_TARGET_SUFFIX),.so)
+MODULE_OUTPUT_DIR:=$(OUT_SHARED_LIB_DIR)$(addprefix lib,$(LOCAL_INTERMEDIATES))
+else 
+ifeq ($(LOCAL_TARGET_SUFFIX),.exe)
+MODULE_OUTPUT_DIR:=$(OUT_EXECUTABLE_DIR)$(LOCAL_INTERMEDIATES)
+endif
+endif
+endif
+ifeq ($(MODULE_OUTPUT_DIR),)
+$(error NO SUPPORT TARGET TYPE)
+endif
+
+LOCAL_C_OBJ:=$(patsubst %.c,%.o,$(filter %.c,$(LOCAL_SRC_FILE)))
+LOCAL_CPP_OBJ:=$(patsubst %.cpp,%.o,$(filter %.cpp,$(LOCAL_SRC_FILE)))
+LOCAL_ASM_OBJ:=$(patsubst %.S,%.o,$(filter %.S,$(LOCAL_SRC_FILE)))
+
+PRIVATE_C_OBJECTS:= $(addprefix $(MODULE_OUTPUT_DIR)/,$(LOCAL_C_OBJ))
+PRIVATE_CPP_OBJECTS:= $(addprefix $(MODULE_OUTPUT_DIR)/,$(LOCAL_CPP_OBJ))
+PRIVATE_S_OBJECTS:= $(addprefix $(MODULE_OUTPUT_DIR)/,$(LOCAL_ASM_OBJ))
+
+PRIVATE_C_FLAGS:= -I./include -I$(LOCAL_DIR) -I$(LOCAL_DIR)/inc $(addprefix -I$(LOCAL_DIR)/,$(LOCAL_C_INCLUDES)) \
+                  $(addprefix -isystem , $(STDINC)) 
+
+PRIVATE_OBJECTS:= $(PRIVATE_C_OBJECTS) $(PRIVATE_S_OBJECTS) $(PRIVATE_CPP_OBJECTS)
+
+PRIVATE_C_DEP:= $(patsubst %.o,%.d,$(PRIVATE_C_OBJECTS))
+PRIVATE_CPP_DEP:= $(patsubst %.o,%.d,$(PRIVATE_CPP_OBJECTS))
+PRIVATE_S_DEP:= $(patsubst %.o,%.d,$(PRIVATE_S_OBJECTS))
+
+PRIVATE_DEP:=$(PRIVATE_C_DEP) $(PRIVATE_S_DEP) $(PRIVATE_CPP_DEP)
+
+
+PRIVATE_EXPORT_INCLUDES:=$(MODULE_OUTPUT_DIR)/export_includes
+EXPORT_INC_PATH:=$(strip $(LOCAL_EXPORT_INC_PATH))
+
+$(PRIVATE_EXPORT_INCLUDES) : PRIVATE_MODULE:=$(LOCAL_MODULE)
+$(PRIVATE_EXPORT_INCLUDES) : $(EXPORT_INC_PATH)
+	@mkdir -p $(dir $@) && rm -f $@
+ifdef EXPORT_INC_PATH
+	@echo $(PRIVATE_MODULE) Export includes file: $@ -- $^
+	@for d in $^; do \
+	        echo "-I$$d" >> $@; \
+	        done
+else
+	@touch $@
+endif
+
+PRIVATE_IMPORT_INCLUDES:=$(MODULE_OUTPUT_DIR)/import_includes
+PRIVATE_DEP_LIB_EXPORT_INCLUDES:= $(strip $(foreach lib,$(LOCAL_SHARED_LIBRARIES),\
+	$(addsuffix $(INTERMEDIATES)/export_includes,$(addprefix $(OUT_SHARED_LIB_DIR),$(lib)))) \
+									$(foreach lib,$(LOCAL_STATIC_LIBRARIES),\
+	$(addsuffix $(INTERMEDIATES)/export_includes,$(addprefix $(OUT_STATIC_LIB_DIR),$(lib)))))
+
+$(PRIVATE_IMPORT_INCLUDES): PRIVATE_MODULE:=$(LOCAL_MODULE)
+$(PRIVATE_IMPORT_INCLUDES):$(PRIVATE_DEP_LIB_EXPORT_INCLUDES)
+	@mkdir -p $(dir $@) && rm -f $@
+ifdef PRIVATE_DEP_LIB_EXPORT_INCLUDES
+	@echo $(PRIVATE_MODULE) Import includes file: $^
+	@for f in $^; do \
+	  cat $$f >> $@; \
+	done
+else
+	@touch $@
+endif
+$(PRIVATE_C_OBJECTS): PRIVATE_MODULE:=$(LOCAL_MODULE)
+$(PRIVATE_C_OBJECTS): MODULE_DIR:=$(LOCAL_DIR)
+$(PRIVATE_C_OBJECTS): PRIVATE_C_FLAGS:=$(PRIVATE_C_FLAGS) 
+$(PRIVATE_C_OBJECTS): CC:=$(CC)
+$(PRIVATE_C_OBJECTS): PRIVATE_IMPORT_INCLUDES:=$(PRIVATE_IMPORT_INCLUDES)
+
+$(PRIVATE_C_OBJECTS): $(PRIVATE_IMPORT_INCLUDES)
+$(PRIVATE_C_OBJECTS):$(MODULE_OUTPUT_DIR)/%.o: $(PRJ_ROOT)/$(LOCAL_DIR)/%.c 
+	@echo "$(MODULE_DIR) Target $(PRIVATE_MODULE) <= $<"
+	@mkdir -p $(dir $@)
+	$(Q)$(CC) $(PRIVATE_C_FLAGS) \
+	$(shell cat $(PRIVATE_IMPORT_INCLUDES)) \
+	-MD -MF $(patsubst %.o,%.d,$@) -o $@ -c $<
+-include	$(PRIVATE_DEP)
+
+$(PRIVATE_CPP_OBJECTS): PRIVATE_MODULE:=$(LOCAL_MODULE)
+$(PRIVATE_CPP_OBJECTS): PRIVATE_C_FLAGS:=$(PRIVATE_C_FLAGS) 
+$(PRIVATE_CPP_OBJECTS): CC:=$(CC)
+$(PRIVATE_CPP_OBJECTS): PRIVATE_IMPORT_INCLUDES:=$(PRIVATE_IMPORT_INCLUDES)
+$(PRIVATE_CPP_OBJECTS): MODULE_DIR:=$(LOCAL_DIR)
+
+$(PRIVATE_CPP_OBJECTS): $(PRIVATE_IMPORT_INCLUDES)
+$(PRIVATE_CPP_OBJECTS):$(MODULE_OUTPUT_DIR)/%.o: $(PRJ_ROOT)/$(LOCAL_DIR)/%.cpp
+	@echo "$(MODULE_DIR) Target $(PRIVATE_MODULE) <= $<"
+	@mkdir -p $(dir $@)
+	$(Q)$(CC) $(PRIVATE_C_FLAGS) \
+	$(shell cat $(PRIVATE_IMPORT_INCLUDES)) \
+	-MD -MF $(patsubst %.o,%.d,$@) -o $@ -c $<
+-include	$(PRIVATE_DEP)
+
+.phony: $(LOCAL_MODULE)_$(ARCH)
+
+ifeq ($(LOCAL_TARGET_SUFFIX),.a)
+PRIVATE_TARGET:=$(addprefix $(MODULE_OUTPUT_DIR)/lib,$(addsuffix $(LOCAL_TARGET_SUFFIX),$(LOCAL_MODULE)))
+$(PRIVATE_TARGET): AR:=$(AR)
+$(PRIVATE_TARGET): PRIVATE_MODULE:=$(LOCAL_MODULE)
+$(PRIVATE_TARGET): MODULE_DIR:=$(LOCAL_DIR)
+$(PRIVATE_TARGET): $(PRIVATE_OBJECTS)
+	@echo "$(MODULE_DIR) Target static library $(PRIVATE_MODULE) : $@"
+	@mkdir -p $(dir $@)
+	$(Q)$(AR) cr $@ $^
+else 
+
+PRIVATE_STATIC_DEP_LIB_FULL_PATH:= $(foreach lib,$(LOCAL_STATIC_LIBRARIES),\
+	$(addsuffix $(INTERMEDIATES)/$(lib).a, $(addprefix $(OUT_STATIC_LIB_DIR),$(lib))))
+PRIVATE_SHARED_DEP_LIB_FULL_PATH:= $(foreach lib,$(LOCAL_SHARED_LIBRARIES),\
+	$(addsuffix $(INTERMEDIATES)/$(lib).so, $(addprefix $(OUT_SHARED_LIB_DIR),$(lib))))
+
+#$(info xxx $(DEP_LIB_INCLUDES))
+LD_FLAGS:= \
+	$(LOCAL_LD_FLAGS) \
+	$(ARCH_LD_FLAGS) \
+	$(addprefix -L,$(OUT_LIB_INSTALL_DIR)) 
+
+ifeq ($(LOCAL_TARGET_SUFFIX),.so)
+PRIVATE_TARGET:=$(addprefix $(MODULE_OUTPUT_DIR)/lib,$(addsuffix $(LOCAL_TARGET_SUFFIX),$(LOCAL_MODULE)))
+LOCAL_CLEAN:=$(LOCAL_CLEAN) $(OUT_LIB_INSTALL_DIR)/$(notdir $(PRIVATE_TARGET)) 
+$(PRIVATE_TARGET): PRIVATE_MODULE:=$(LOCAL_MODULE)
+$(PRIVATE_TARGET): MODULE_DIR:=$(LOCAL_DIR)
+$(PRIVATE_TARGET): LD_FLAGS:=$(LD_FLAGS)
+$(PRIVATE_TARGET): LD:=$(LD)
+$(PRIVATE_TARGET): STD_STATIC_LIB:=$(STD_STATIC_LIB)
+$(PRIVATE_TARGET): OUT_LIB_INSTALL_DIR:=$(OUT_LIB_INSTALL_DIR)
+$(PRIVATE_TARGET): $(PRIVATE_OBJECTS) $(PRIVATE_STATIC_DEP_LIB_FULL_PATH) $(PRIVATE_SHARED_DEP_LIB_FULL_PATH)
+	@echo "$(MODULE_DIR) Target shared library $(PRIVATE_MODULE) : $@"
+	@mkdir -p $(dir $@)
+	$(Q)$(LD) -shared -fPIC -o $@ $(LD_FLAGS) -Wl,--start-group $(filter %.o,$^) $(filter %.a,$^)  $(STD_STATIC_LIB) -Wl,--end-group 
+#	install
+	@mkdir -p $(OUT_LIB_INSTALL_DIR)
+	@cp $@ $(OUT_LIB_INSTALL_DIR)
+else
+ifeq ($(LOCAL_TARGET_SUFFIX),.exe)
+
+PRIVATE_TARGET:=$(addprefix $(MODULE_OUTPUT_DIR)/,$(LOCAL_MODULE))
+LOCAL_CLEAN:=$(LOCAL_CLEAN) $(OUT_BIN_INSTALL_DIR)/$(notdir $(PRIVATE_TARGET))
+$(PRIVATE_TARGET): PRIVATE_MODULE:=$(LOCAL_MODULE)
+$(PRIVATE_TARGET): MODULE_DIR:=$(LOCAL_DIR)
+$(PRIVATE_TARGET): LD_FLAGS:=$(LD_FLAGS)
+$(PRIVATE_TARGET): LD:=$(LD)
+$(PRIVATE_TARGET): CRT_STATIC:=$(CRT_STATIC)
+$(PRIVATE_TARGET): STD_STATIC_LIB:=$(STD_STATIC_LIB)
+$(PRIVATE_TARGET): CRT_END:=$(CRT_END)
+$(PRIVATE_TARGET): OUT_BIN_INSTALL_DIR:=$(OUT_BIN_INSTALL_DIR)
+$(PRIVATE_TARGET): $(PRIVATE_OBJECTS) $(PRIVATE_STATIC_DEP_LIB_FULL_PATH) $(PRIVATE_SHARED_DEP_LIB_FULL_PATH)
+	@echo "$(MODULE_DIR) Target executable $(PRIVATE_MODULE) : $@"
+	@mkdir -p $(dir $@)
+	$(Q)$(LD) -o $@ $(LD_FLAGS) \
+	-Wl,--start-group $(CRT_STATIC) $(filter %.o,$^) $(filter %.a,$^) \
+	$(addprefix -l,$(patsubst lib%,%,$(basename $(notdir $(filter %.so,$^))))) \
+	$(STD_STATIC_LIB) -Wl,--end-group $(CRT_END)
+#	install
+	@mkdir -p $(OUT_BIN_INSTALL_DIR)
+	@cp $@ $(OUT_BIN_INSTALL_DIR)
+endif
+endif
+endif
+$(LOCAL_MODULE)_$(ARCH):$(PRIVATE_EXPORT_INCLUDES) $(PRIVATE_IMPORT_INCLUDES) $(PRIVATE_TARGET) 
+
+#TODO find muti define location
+ifeq ($(filter $(LOCAL_MODULE)_$(ARCH),$(MODULE_ALL)),)
+MODULE_ALL:=$(MODULE_ALL) $(LOCAL_MODULE)_$(ARCH)
+else
+$(info MODULE_ALL = $(MODULE_ALL))
+$(info LOCAL_MODULE=$(LOCAL_MODULE))
+$(info LOCAL_DIR=$(LOCAL_DIR))
+$(error mult defination module)
+endif
+
+LOCAL_CLEAN	:= $(LOCAL_CLEAN) $(PRIVATE_OBJECTS) $(PRIVATE_DEP) $(PRIVATE_TARGET) $(PRIVATE_IMPORT_INCLUDES) $(PRIVATE_EXPORT_INCLUDES)
+
+$(LOCAL_MODULE)_$(ARCH)_clean:LOCAL_CLEAN:=$(LOCAL_CLEAN)
+
+$(LOCAL_MODULE)_$(ARCH)_clean:
+	@rm -f $(LOCAL_CLEAN)
+
+CLEAN:= $(CLEAN) $(LOCAL_CLEAN)
+
+#$(info LOCAL_CLEAN=$(LOCAL_CLEAN))
+#$(info CLEAN=$(CLEAN))
+
+
