@@ -20,9 +20,6 @@ TOOLCHAIN:=toolchain
 
 MULTI_ARCH:= 64 32 
 
-include  $(foreach arch,$(MULTI_ARCH),build/tool_$(arch).mk build/dirgen_$(arch).mk $(PRJ_ROOT)/cfg/module.mk)
-
-
 all: targets
 		@echo "			********************************"
 		@echo "			*                              *"
@@ -36,6 +33,7 @@ all: targets
 
 #TODO: auto search dir
 
+include  $(foreach arch,$(MULTI_ARCH),build/tool_$(arch).mk build/dirgen_$(arch).mk $(PRJ_ROOT)/cfg/module.mk)
 
 .PHONY:		targets
 targets:	$(MODULE_ALL)
