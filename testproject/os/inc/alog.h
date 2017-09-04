@@ -4,13 +4,13 @@
 #include <stdio.h>
 #include <aos.h>
 #define A_LOGD(f,...) \
-		printf("%-15s:%04d:pid=%d:ctid=%ld => "f"\n",__FUNCTION__, __LINE__,getpid(),(long int)gettid(),##__VA_ARGS__)
+		printf("%-15s:%04d:pid=%d:ctid=%ld => "f"\n",__FUNCTION__, __LINE__,getpid(),gettid(),##__VA_ARGS__)
 
-#define SL_LOGD(f,...) A_LOGD(f,##__VA_ARGS__)
+#define SL_LOGD(f,...) printf("%-15s:%04d:pid=%d:ctid=%ld => "f, __FUNCTION__, __LINE__,getpid(),gettid(),##__VA_ARGS__); printf("\n");
 
-#define SL_LOGE(f,...) A_LOGD(f,##__VA_ARGS__)
+#define SL_LOGE(f,...) printf("%-15s:%04d:pid=%d:ctid=%ld => "f, __FUNCTION__, __LINE__,getpid(),gettid(),##__VA_ARGS__); printf("\n");
 
-#define SL_LOGV(f,...) A_LOGD(f,##__VA_ARGS__)
+#define SL_LOGV(f,...) printf("%-15s:%04d:pid=%d:ctid=%ld => "f, __FUNCTION__, __LINE__,getpid(),gettid(),##__VA_ARGS__); printf("\n");
 
 #endif
 

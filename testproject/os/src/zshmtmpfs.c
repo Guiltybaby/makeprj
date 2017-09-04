@@ -247,7 +247,7 @@ V_LOG("1:fd=%d\n",fd);
 		return NULL;
 	}
 	ret = read(fd,&size,sizeof(size));
-V_LOG("2:size=%d:ret=%d:sizeof(size)=%u\n",size,ret,sizeof(size));
+V_LOG("2:size=%d:ret=%d:sizeof(size)=%lu\n",size,ret,sizeof(size));
 
 	if(ret != sizeof(size))
 	{

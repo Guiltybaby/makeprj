@@ -1,9 +1,7 @@
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <signal.h>
-#include <string.h>
 
 #include "alog.h"
 #include "base.h"

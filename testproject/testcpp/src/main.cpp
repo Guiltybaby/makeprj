@@ -79,10 +79,10 @@ static void testclass()
 {
 	Time time;
 	time.Show();
-	printf("stack class %p \n",&time);
-//	printf("stack class method %p \n",reinterpret_cast<void*>(&Time::Show));	
+	printf("stack class %p \n",&time);	
+	printf("stack class method %p \n",reinterpret_cast<void*>(&Time::Show));	
 	printf("stack class data %p \n",&time.test);	
-	printf("class size = %u \n",sizeof(D));
+	printf("class size = %lu \n",sizeof(D));
 	Time time1(8,0);
 	Time time2(2,30);
 	Time total(11,20);

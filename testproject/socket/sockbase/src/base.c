@@ -74,7 +74,7 @@ int socket_init(UID uid)
 	return sfd;	
 }
 
-void* worker_thread(void* param){
+void* worker_thread(long param){
 	ssize_t numRead;
 	char buf[BUF_SIZE];
 	int* data = (int*)param;
@@ -82,7 +82,7 @@ void* worker_thread(void* param){
 	int cfd = data[1];
 	int in = data[2];
 	free(param);
-	A_LOGD("cpid =%d cfd = %d in = %d",cpid,cfd,in);
+	A_LOGD("cpid =%d cfd = %d in = %d %x",cpid,cfd,in,param);
 	if(in)
 	{
 		A_LOGD("server read");
@@ -141,11 +141,11 @@ void handler(int cpid,int cfd, int in){
 	{
 		param[2] = 0;
 	}
-	A_LOGD("pid = %d sfd = %d,in = %d",param[0],param[1],param[2]);
+	A_LOGD("pid = %d sfd = %d,in = %d %x",param[0],param[1],param[2],param);
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_JOINABLE);
 	pthread_attr_getstacksize(&attr,&stacksize);
-	int rc = pthread_create(&tid,&attr,worker_thread,(void*)param);
+	int rc = pthread_create(&tid,&attr,worker_thread,param);
 	if(rc)
 	{
 		A_LOGD("thread create error rc = %d",rc);

@@ -3,7 +3,7 @@
 .SUFFIXES:
 
 ifeq ($(QUIET),)
-Q:=@
+Q:=
 endif
 
 include build/definition.mk
@@ -18,9 +18,13 @@ TOOLCHAIN:=toolchain
 ### Build tools
 # 
 
-MULTI_ARCH:= 64 32 
+MULTI_ARCH:= 64 #32 
+
+
+.PHONY:	all	targets
 
 all: targets
+		echo $<
 		@echo "			********************************"
 		@echo "			*                              *"
 		@echo "			*                              *"
@@ -35,7 +39,6 @@ all: targets
 
 include  $(foreach arch,$(MULTI_ARCH),build/tool_$(arch).mk build/dirgen_$(arch).mk $(PRJ_ROOT)/cfg/module.mk)
 
-.PHONY:		targets
 targets:	$(MODULE_ALL)
 
 .PHONY:		clean

@@ -40,7 +40,6 @@ PRIVATE_DEP:=$(PRIVATE_C_DEP) $(PRIVATE_S_DEP) $(PRIVATE_CPP_DEP)
 
 PRIVATE_EXPORT_INCLUDES:=$(MODULE_OUTPUT_DIR)/export_includes
 EXPORT_INC_PATH:=$(strip $(LOCAL_EXPORT_INC_PATH))
-
 $(PRIVATE_EXPORT_INCLUDES) : PRIVATE_MODULE:=$(LOCAL_MODULE)
 $(PRIVATE_EXPORT_INCLUDES) : $(EXPORT_INC_PATH)
 	@mkdir -p $(dir $@) && rm -f $@
@@ -50,7 +49,7 @@ ifdef EXPORT_INC_PATH
 	        echo "-I$$d" >> $@; \
 	        done
 else
-	@touch $@
+	touch $@
 endif
 
 PRIVATE_IMPORT_INCLUDES:=$(MODULE_OUTPUT_DIR)/import_includes
@@ -58,7 +57,7 @@ PRIVATE_DEP_LIB_EXPORT_INCLUDES:= $(strip $(foreach lib,$(LOCAL_SHARED_LIBRARIES
 	$(addsuffix $(INTERMEDIATES)/export_includes,$(addprefix $(OUT_SHARED_LIB_DIR),$(lib)))) \
 									$(foreach lib,$(LOCAL_STATIC_LIBRARIES),\
 	$(addsuffix $(INTERMEDIATES)/export_includes,$(addprefix $(OUT_STATIC_LIB_DIR),$(lib)))))
-
+#$(info PRIVATE_IMPORT_INCLUDES = $(PRIVATE_IMPORT_INCLUDES))
 $(PRIVATE_IMPORT_INCLUDES): PRIVATE_MODULE:=$(LOCAL_MODULE)
 $(PRIVATE_IMPORT_INCLUDES):$(PRIVATE_DEP_LIB_EXPORT_INCLUDES)
 	@mkdir -p $(dir $@) && rm -f $@
@@ -68,17 +67,16 @@ ifdef PRIVATE_DEP_LIB_EXPORT_INCLUDES
 	  cat $$f >> $@; \
 	done
 else
-	@touch $@
+	touch $@
 endif
 $(PRIVATE_C_OBJECTS): PRIVATE_MODULE:=$(LOCAL_MODULE)
-$(PRIVATE_C_OBJECTS): MODULE_DIR:=$(LOCAL_DIR)
 $(PRIVATE_C_OBJECTS): PRIVATE_C_FLAGS:=$(PRIVATE_C_FLAGS) 
 $(PRIVATE_C_OBJECTS): CC:=$(CC)
 $(PRIVATE_C_OBJECTS): PRIVATE_IMPORT_INCLUDES:=$(PRIVATE_IMPORT_INCLUDES)
 
 $(PRIVATE_C_OBJECTS): $(PRIVATE_IMPORT_INCLUDES)
 $(PRIVATE_C_OBJECTS):$(MODULE_OUTPUT_DIR)/%.o: $(PRJ_ROOT)/$(LOCAL_DIR)/%.c 
-	@echo "$(MODULE_DIR) Target $(PRIVATE_MODULE) <= $<"
+	@echo "Target $(PRIVATE_MODULE) <= $<"
 	@mkdir -p $(dir $@)
 	$(Q)$(CC) $(PRIVATE_C_FLAGS) \
 	$(shell cat $(PRIVATE_IMPORT_INCLUDES)) \
@@ -89,11 +87,10 @@ $(PRIVATE_CPP_OBJECTS): PRIVATE_MODULE:=$(LOCAL_MODULE)
 $(PRIVATE_CPP_OBJECTS): PRIVATE_C_FLAGS:=$(PRIVATE_C_FLAGS) 
 $(PRIVATE_CPP_OBJECTS): CC:=$(CC)
 $(PRIVATE_CPP_OBJECTS): PRIVATE_IMPORT_INCLUDES:=$(PRIVATE_IMPORT_INCLUDES)
-$(PRIVATE_CPP_OBJECTS): MODULE_DIR:=$(LOCAL_DIR)
 
 $(PRIVATE_CPP_OBJECTS): $(PRIVATE_IMPORT_INCLUDES)
 $(PRIVATE_CPP_OBJECTS):$(MODULE_OUTPUT_DIR)/%.o: $(PRJ_ROOT)/$(LOCAL_DIR)/%.cpp
-	@echo "$(MODULE_DIR) Target $(PRIVATE_MODULE) <= $<"
+	@echo "Target $(PRIVATE_MODULE) <= $<"
 	@mkdir -p $(dir $@)
 	$(Q)$(CC) $(PRIVATE_C_FLAGS) \
 	$(shell cat $(PRIVATE_IMPORT_INCLUDES)) \
@@ -106,9 +103,8 @@ ifeq ($(LOCAL_TARGET_SUFFIX),.a)
 PRIVATE_TARGET:=$(addprefix $(MODULE_OUTPUT_DIR)/lib,$(addsuffix $(LOCAL_TARGET_SUFFIX),$(LOCAL_MODULE)))
 $(PRIVATE_TARGET): AR:=$(AR)
 $(PRIVATE_TARGET): PRIVATE_MODULE:=$(LOCAL_MODULE)
-$(PRIVATE_TARGET): MODULE_DIR:=$(LOCAL_DIR)
 $(PRIVATE_TARGET): $(PRIVATE_OBJECTS)
-	@echo "$(MODULE_DIR) Target static library $(PRIVATE_MODULE) : $@"
+	@echo "Target static library $(PRIVATE_MODULE) : $@"
 	@mkdir -p $(dir $@)
 	$(Q)$(AR) cr $@ $^
 else 
@@ -122,21 +118,21 @@ PRIVATE_SHARED_DEP_LIB_FULL_PATH:= $(foreach lib,$(LOCAL_SHARED_LIBRARIES),\
 LD_FLAGS:= \
 	$(LOCAL_LD_FLAGS) \
 	$(ARCH_LD_FLAGS) \
-	$(addprefix -L,$(OUT_LIB_INSTALL_DIR)) 
+	$(addprefix -L,$(OUT_LIB_INSTALL_DIR)) \
+	$(addprefix -l, $(LOCAL_SHARED_LIBRARIES:lib%=%))
 
 ifeq ($(LOCAL_TARGET_SUFFIX),.so)
 PRIVATE_TARGET:=$(addprefix $(MODULE_OUTPUT_DIR)/lib,$(addsuffix $(LOCAL_TARGET_SUFFIX),$(LOCAL_MODULE)))
 LOCAL_CLEAN:=$(LOCAL_CLEAN) $(OUT_LIB_INSTALL_DIR)/$(notdir $(PRIVATE_TARGET)) 
 $(PRIVATE_TARGET): PRIVATE_MODULE:=$(LOCAL_MODULE)
-$(PRIVATE_TARGET): MODULE_DIR:=$(LOCAL_DIR)
 $(PRIVATE_TARGET): LD_FLAGS:=$(LD_FLAGS)
 $(PRIVATE_TARGET): LD:=$(LD)
 $(PRIVATE_TARGET): STD_STATIC_LIB:=$(STD_STATIC_LIB)
 $(PRIVATE_TARGET): OUT_LIB_INSTALL_DIR:=$(OUT_LIB_INSTALL_DIR)
-$(PRIVATE_TARGET): $(PRIVATE_OBJECTS) $(PRIVATE_STATIC_DEP_LIB_FULL_PATH) $(PRIVATE_SHARED_DEP_LIB_FULL_PATH)
-	@echo "$(MODULE_DIR) Target shared library $(PRIVATE_MODULE) : $@"
+$(PRIVATE_TARGET): $(PRIVATE_STATIC_DEP_LIB_FULL_PATH) $(PRIVATE_SHARED_DEP_LIB_FULL_PATH) $(PRIVATE_OBJECTS) 
+	@echo "Target shared library $(PRIVATE_MODULE) : $@"
 	@mkdir -p $(dir $@)
-	$(Q)$(LD) -shared -fPIC -o $@ $(LD_FLAGS) -Wl,--start-group $(filter %.o,$^) $(filter %.a,$^)  $(STD_STATIC_LIB) -Wl,--end-group 
+	$(Q)$(LD) -shared -fPIC -o $@  -Wl,--start-group $(filter %.o,$^) $(filter %.a,$^)  $(STD_STATIC_LIB) -Wl,--end-group $(LD_FLAGS) 
 #	install
 	@mkdir -p $(OUT_LIB_INSTALL_DIR)
 	@cp $@ $(OUT_LIB_INSTALL_DIR)
@@ -146,20 +142,17 @@ ifeq ($(LOCAL_TARGET_SUFFIX),.exe)
 PRIVATE_TARGET:=$(addprefix $(MODULE_OUTPUT_DIR)/,$(LOCAL_MODULE))
 LOCAL_CLEAN:=$(LOCAL_CLEAN) $(OUT_BIN_INSTALL_DIR)/$(notdir $(PRIVATE_TARGET))
 $(PRIVATE_TARGET): PRIVATE_MODULE:=$(LOCAL_MODULE)
-$(PRIVATE_TARGET): MODULE_DIR:=$(LOCAL_DIR)
 $(PRIVATE_TARGET): LD_FLAGS:=$(LD_FLAGS)
 $(PRIVATE_TARGET): LD:=$(LD)
 $(PRIVATE_TARGET): CRT_STATIC:=$(CRT_STATIC)
 $(PRIVATE_TARGET): STD_STATIC_LIB:=$(STD_STATIC_LIB)
 $(PRIVATE_TARGET): CRT_END:=$(CRT_END)
 $(PRIVATE_TARGET): OUT_BIN_INSTALL_DIR:=$(OUT_BIN_INSTALL_DIR)
-$(PRIVATE_TARGET): $(PRIVATE_OBJECTS) $(PRIVATE_STATIC_DEP_LIB_FULL_PATH) $(PRIVATE_SHARED_DEP_LIB_FULL_PATH)
-	@echo "$(MODULE_DIR) Target executable $(PRIVATE_MODULE) : $@"
+$(PRIVATE_TARGET): $(PRIVATE_STATIC_DEP_LIB_FULL_PATH) $(PRIVATE_SHARED_DEP_LIB_FULL_PATH) $(PRIVATE_OBJECTS) 
+	@echo "Target executable $(PRIVATE_MODULE) : $@"
 	@mkdir -p $(dir $@)
-	$(Q)$(LD) -o $@ $(LD_FLAGS) \
-	-Wl,--start-group $(CRT_STATIC) $(filter %.o,$^) $(filter %.a,$^) \
-	$(addprefix -l,$(patsubst lib%,%,$(basename $(notdir $(filter %.so,$^))))) \
-	$(STD_STATIC_LIB) -Wl,--end-group $(CRT_END)
+	$(Q)$(LD) -o $@ \
+	-Wl,--start-group $(CRT_STATIC) $(filter %.o,$^) $(filter %.a,$^) $(STD_STATIC_LIB) -Wl,--end-group $(LD_FLAGS) $(CRT_END)
 #	install
 	@mkdir -p $(OUT_BIN_INSTALL_DIR)
 	@cp $@ $(OUT_BIN_INSTALL_DIR)

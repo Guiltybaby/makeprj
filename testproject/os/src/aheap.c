@@ -30,7 +30,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "aheap.h"
-#include "alog.h"
 
 //******************************************************************************
 //
@@ -155,20 +154,20 @@ UInt32 AHEAP_MediaZoneFree(void)
 
 	if((free_pages_fp = popen(free_pages_cmd, "r")) == NULL)
 	{
-		A_LOGD("popen() error!\n");
+		printf("popen() error!\n");
 		return 0;
 	}
 
 	while(fgets(free_pages_str, sizeof(free_pages_str), free_pages_fp))
 	{
-		A_LOGD("%s",free_pages_str);
+		printf("%s",free_pages_str);
 	}
 	pclose(free_pages_fp);
 
 	free_pages_pos = strstr(free_pages_str, "nr_free_pages ");
 	if(NULL == free_pages_pos)
 	{
-		A_LOGD("get a wrong position.\n");
+		printf("get a wrong position.\n");
 		return 0;
 	}
 	sscanf(free_pages_pos, "nr_free_pages %d", &free_mem_size);
@@ -272,19 +271,19 @@ void amem_info()
     int i = 0;
     struct descriptor** pp;
 
-    A_LOGD("---------------------------begin------------------------------\n");
-    A_LOGD("mem used cnt: %d\n", dspt_arr.idx);
-    A_LOGD("address    size     line     file\n");
+    printf("---------------------------begin------------------------------\n");
+    printf("mem used cnt: %d\n", dspt_arr.idx);
+    printf("address    size     line     file\n");
     for (; i < NUM_TABLESMax; i++)
     for (pp = &htab[i]; *pp; pp = &(*pp)->link)
     {
-        A_LOGD("0x%08x %-8d %-8d %s\n", 
+        printf("0x%08x %-8d %-8d %s\n", 
                 (*pp)->ptr,
                 (*pp)->size,
                 (*pp)->line,
                 (*pp)->file);
     }
-    A_LOGD("----------------------------end-------------------------------\n\n\n");
+    printf("----------------------------end-------------------------------\n\n\n");
 
 #endif
 }
@@ -297,14 +296,14 @@ void* amem_alloc(size_t nbytes, const char *file, UInt32 line)
     ptr = malloc(nbytes == 0 ? 1 : nbytes);
     if (ptr == NULL)
     {
-        A_LOGD("Allocation Failed\n");
+        printf("Allocation Failed\n");
         if (file == NULL)
         {
-            A_LOGD("Allocation Failed\n");
+            printf("Allocation Failed\n");
         }
         else
         {
-            A_LOGD("Allocation Failed f:%s; line:%lu \n", file, line);
+            printf("Allocation Failed f:%s; line:%04u \n", file, line);
         }
         abort();
     }
@@ -330,14 +329,14 @@ void *amem_calloc(UInt32 count, UInt32 nbytes, const char *file, UInt32 line)
     ptr = calloc(count, nbytes);
     if (ptr == NULL)
     {
-        A_LOGD("Allocation Failed\n");
+        printf("Allocation Failed\n");
         if (file == NULL)
         {
-            A_LOGD("Allocation Failed\n");
+            printf("Allocation Failed\n");
         }
         else
         {
-            A_LOGD("Allocation Failed f:%s; line:%lu \n", file, line);
+            printf("Allocation Failed f:%s; line:%d \n", file, line);
         }
         abort();
     }
@@ -373,14 +372,14 @@ void *amem_resize(void *ptr, UInt32 nbytes, const char *file, UInt32 line)
     ptr = realloc(ptr, nbytes);
     if (ptr == NULL)
     {
-        A_LOGD("Allocation Failed\n");
+        printf("Allocation Failed\n");
         if (file == NULL)
         {
-            A_LOGD("Allocation Failed\n");
+            printf("Allocation Failed\n");
         }
         else
         {
-            A_LOGD("Allocation Failed f:%s; line:%lu \n", file, line);
+            printf("Allocation Failed f:%s; line:%d \n", file, line);
         }
         abort();
     }

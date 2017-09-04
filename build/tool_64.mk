@@ -32,13 +32,12 @@
 #CRT_STATIC:= $(REF_ANDROID_PATH)/out/target/product/evb6795_64_tee_pr/obj/lib/crtbegin_static1.o
 #CRT_END:=$(REF_ANDROID_PATH)out/target/product/evb6795_64_tee_pr/obj/lib/crtend_android.o
 
-STD_STATIC_LIB:= -lpthread
 
 ARCH			:= 64
 CC              := $(CROSS_COMPLIER)gcc -fPIC
 LD				:= $(CROSS_COMPLIER)g++
 AR				:= $(CROSS_COMPLIER)ar
 C_FLAGS         := -g -Wall -fPIC -I./include
-ARCH_LD_FLAGS   := 
+ARCH_LD_FLAGS   := -lpthread
 LL_ALL          := cr 
 
