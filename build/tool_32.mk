@@ -40,7 +40,7 @@ LD				:= $(CROSS_COMPLIER)g++
 AR				:= $(CROSS_COMPLIER)ar
 STD_INC			:= 
 C_FLAGS         := -g -Wall -fPIC -I./include
-ARCH_LD_FLAGS   := -lpthread
+ARCH_LD_FLAGS   := 
 LF_ALL          := 
 LL_ALL          := cr 
 

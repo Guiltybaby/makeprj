@@ -132,7 +132,7 @@ $(PRIVATE_TARGET): OUT_LIB_INSTALL_DIR:=$(OUT_LIB_INSTALL_DIR)
 $(PRIVATE_TARGET): $(PRIVATE_STATIC_DEP_LIB_FULL_PATH) $(PRIVATE_SHARED_DEP_LIB_FULL_PATH) $(PRIVATE_OBJECTS) 
 	@echo "Target shared library $(PRIVATE_MODULE) : $@"
 	@mkdir -p $(dir $@)
-	$(Q)$(LD) -shared -fPIC -o $@  -Wl,--start-group $(filter %.o,$^) $(filter %.a,$^)  $(STD_STATIC_LIB) -Wl,--end-group $(LD_FLAGS) 
+	$(Q)$(LD) -shared -fPIC -o $@ $(LD_FLAGS) -Wl,--start-group $(filter %.o,$^) $(filter %.a,$^)  $(STD_STATIC_LIB) -Wl,--end-group 
 #	install
 	@mkdir -p $(OUT_LIB_INSTALL_DIR)
 	@cp $@ $(OUT_LIB_INSTALL_DIR)
@@ -151,8 +151,8 @@ $(PRIVATE_TARGET): OUT_BIN_INSTALL_DIR:=$(OUT_BIN_INSTALL_DIR)
 $(PRIVATE_TARGET): $(PRIVATE_STATIC_DEP_LIB_FULL_PATH) $(PRIVATE_SHARED_DEP_LIB_FULL_PATH) $(PRIVATE_OBJECTS) 
 	@echo "Target executable $(PRIVATE_MODULE) : $@"
 	@mkdir -p $(dir $@)
-	$(Q)$(LD) -o $@ \
-	-Wl,--start-group $(CRT_STATIC) $(filter %.o,$^) $(filter %.a,$^) $(STD_STATIC_LIB) -Wl,--end-group $(LD_FLAGS) $(CRT_END)
+	$(Q)$(LD) -o $@ $(LD_FLAGS) \
+	-Wl,--start-group $(CRT_STATIC) $(filter %.o,$^) $(filter %.a,$^) $(STD_STATIC_LIB) -Wl,--end-group $(CRT_END)
 #	install
 	@mkdir -p $(OUT_BIN_INSTALL_DIR)
 	@cp $@ $(OUT_BIN_INSTALL_DIR)
